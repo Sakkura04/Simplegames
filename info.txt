@@ -1,0 +1,15 @@
+Limiting the frame rate to 500 FPS using clock.tick(500) does not guarantee that the game will always run at exactly 500 frames per second.
+Without dt: If the frame rate drops (e.g., from 500 FPS to 250 FPS),
+the game will run slower because each frame takes more time, and the player will move less per second.
+
+With dt: You multiply by the elapsed time (dt), which compensates for any frame rate fluctuations.
+Whether the game runs at 500 FPS, 250 FPS, or 60 FPS, the player's movement speed will remain consistent.
+
+Even though you are using delta time (dt) to ensure frame rate independence, it's still a good idea to set a maximum frame rate using clock.tick(). Here's why:
+
+-> Performance Control: Without frame rate limiting, your game will try to run as fast as possible, which can lead to high CPU or GPU usage.
+This can cause unnecessary strain on the system, overheating, and excessive power consumption.
+-> Smooth Gameplay: Limiting the frame rate helps prevent the game from running too fast on more powerful hardware,
+which can make the game feel unresponsive or too "fast" even if your logic is frame-independent.
+-> Consistency: Limiting the frame rate makes the game loop more predictable.
+If the game runs at an uncontrollably high frame rate, subtle timing issues may occur, especially in physics calculations or animations.
