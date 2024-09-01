@@ -44,6 +44,15 @@ class Player(pygame.sprite.Sprite):
         self.direction = self.direction.normalize() if self.direction else self.direction
         self.rect.center += self.speed * self.direction * dt #to reduce power difference in computers
 
+        if self.rect.left < 0:
+            self.rect.left = 0
+        if self.rect.right > WINDOW_WIDTH:
+            self.rect.right = WINDOW_WIDTH
+        if self.rect.top < 0:
+            self.rect.top = 0
+        if self.rect.bottom > WINDOW_HEIGHT:
+            self.rect.bottom = WINDOW_HEIGHT
+
         recent_keys = pygame.key.get_just_pressed()
         if recent_keys[pygame.K_SPACE] and self.can_shoot:
             Laser(laser_surf,self.rect.midtop, (all_sprites, laser_srites))
@@ -79,19 +88,70 @@ class Star(pygame.sprite.Sprite):
     def new_position(cls):
         cls.positions = [(random.randint(5, 1300), random.randint(5, 750)) for _ in range(20)]
 
+
+# class Meteor(pygame.sprite.Sprite):
+#     def __init__(self, groups, surf, pos):
+#         super().__init__(groups)
+#         self.original_surf = surf
+#         self.image = self.original_surf
+#         self.rect = self.image.get_frect(center=pos)
+#         self.direction = pygame.Vector2(uniform(-0.5, 0.5), 1)
+#         self.speed = 300
+#         self.rotation = 0
+#
+#         self.spinning = False
+#         self.spin_start_time = 0
+#         self.spin_duration = 10000  # 10 seconds
+#         self.spin_interval = 1000 # 30 seconds
+#         self.last_spin_time = pygame.time.get_ticks()
+#
+#     def update(self, dt):
+#         # Move meteor
+#         self.rect.center += self.direction * self.speed * dt
+#         if self.rect.bottom >= WINDOW_HEIGHT:
+#             self.kill()
+#
+#         if self.spinning:
+#             self.rotation += 300 * dt
+#             self.image = pygame.transform.rotozoom(self.original_surf, self.rotation, 1)
+#
+#
+#     def superm(self, dt):
+#         self.spinning = True
+
 class Meteor(pygame.sprite.Sprite):
+    spinning = False
+
     def __init__(self, groups, surf, pos):
         super().__init__(groups)
-        self.image = surf
-        self.rect = self.image.get_frect(center = pos)
+        self.original_surf = surf
+        self.image = self.original_surf
+        self.rect = self.image.get_frect(center=pos)
         self.direction = pygame.Vector2(uniform(-0.5, 0.5), 1)
-        self.mask = pygame.mask.from_surface(self.image)
         self.speed = 300
+        self.rotation = 0
+
+        self.spin_axeleration = 0
+
+    @classmethod
+    def start_spin(self):
+        Meteor.spinning = True
+
 
     def update(self, dt):
+        # Рух метеорита
         self.rect.center += self.direction * self.speed * dt
         if self.rect.bottom >= WINDOW_HEIGHT:
             self.kill()
+
+        # Обертання метеорита
+        if Meteor.spinning:
+            print(f'rotation {self.rotation}')
+            self.spin_axeleration = pygame.time.get_ticks()/10000
+            self.rotation += 500 * dt
+            self.speed += 300 * dt + self.spin_axeleration
+            self.image = pygame.transform.rotozoom(self.original_surf, self.rotation, 1)
+
 
 class Heart(pygame.sprite.Sprite):
     def __init__(self, surf, pos, ind, groups):
@@ -111,7 +171,7 @@ def collisions(player, hearts):
     if good_collision:
         player.gain_score()
 
-    collision = pygame.sprite.spritecollide(player, meteors_sprites, True)
+    collision = pygame.sprite.spritecollide(player, meteors_sprites, True, pygame.sprite.collide_mask)
     if collision:
         player.loose_life()
         hearts.pop(player.lives).kills()
@@ -136,6 +196,8 @@ pygame.display.set_caption('My game')
 WINDOW_WIDTH, WINDOW_HEIGHT = 1280,720
 display_surface = pygame.display.set_mode((WINDOW_WIDTH, WINDOW_HEIGHT))
 clock = pygame.time.Clock()
+last_spin_time = 0
+interval = 10000
 stars = []
 hearts = []
 running = True
@@ -168,21 +230,35 @@ player = Player(all_sprites)
 meteor_event = pygame.event.custom_type()
 pygame.time.set_timer(meteor_event, 500)
 
+super_meteor_event = pygame.event.custom_type()
+pygame.time.set_timer(super_meteor_event, 20000)
+
 star_event = pygame.event.custom_type()
 pygame.time.set_timer(star_event, 70)
 
+
 while running:
+    current_time = pygame.time.get_ticks()
     dt = clock.tick() / 1000  #run frames/sec (if it's empty, it will run comp's max per sec) get_fsp (your comp max)
                      # dt - delta time - time it took comp to render one frame (1/time in brackets)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if event.type == meteor_event:
-            Meteor((all_sprites, meteors_sprites), meteor_surf, (random.randint(10, WINDOW_WIDTH), random.randint(-200, 0)))
         if event.type == star_event:
             Star.new_position()
             for index, star in enumerate(stars):
                 star.change_pos(index)
+
+        if event.type == super_meteor_event:
+            Meteor.start_spin()
+            last_spin_time = current_time + interval
+
+
+        if event.type == meteor_event:
+            Meteor((all_sprites, meteors_sprites), meteor_surf, (random.randint(10, WINDOW_WIDTH), random.randint(-200, 0)))
+
+    if current_time > last_spin_time:
+        Meteor.spinning = False
 
     all_sprites.update(dt)
     display_surface.fill('#3a2e3f') #rosybrown1
