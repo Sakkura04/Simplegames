@@ -13,3 +13,11 @@ This can cause unnecessary strain on the system, overheating, and excessive powe
 which can make the game feel unresponsive or too "fast" even if your logic is frame-independent.
 -> Consistency: Limiting the frame rate makes the game loop more predictable.
 If the game runs at an uncontrollably high frame rate, subtle timing issues may occur, especially in physics calculations or animations.
+
+
+
+
+class AnimatedExplosion(pygame.sprite.Sprite):
+    def update(self, dt):
+        self.frame_index += 40 * dt #Якщо ти збільшуєш self.frame_index на більше на більше значення за кожну ітерацію циклу
+         (наприклад, на 40 * dt), індекс швидше досягне наступного цілого числа (інд наступного кадру).

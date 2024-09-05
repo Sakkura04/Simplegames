@@ -88,37 +88,6 @@ class Star(pygame.sprite.Sprite):
     def new_position(cls):
         cls.positions = [(random.randint(5, 1300), random.randint(5, 750)) for _ in range(20)]
 
-
-# class Meteor(pygame.sprite.Sprite):
-#     def __init__(self, groups, surf, pos):
-#         super().__init__(groups)
-#         self.original_surf = surf
-#         self.image = self.original_surf
-#         self.rect = self.image.get_frect(center=pos)
-#         self.direction = pygame.Vector2(uniform(-0.5, 0.5), 1)
-#         self.speed = 300
-#         self.rotation = 0
-#
-#         self.spinning = False
-#         self.spin_start_time = 0
-#         self.spin_duration = 10000  # 10 seconds
-#         self.spin_interval = 1000 # 30 seconds
-#         self.last_spin_time = pygame.time.get_ticks()
-#
-#     def update(self, dt):
-#         # Move meteor
-#         self.rect.center += self.direction * self.speed * dt
-#         if self.rect.bottom >= WINDOW_HEIGHT:
-#             self.kill()
-#
-#         if self.spinning:
-#             self.rotation += 300 * dt
-#             self.image = pygame.transform.rotozoom(self.original_surf, self.rotation, 1)
-#
-#
-#     def superm(self, dt):
-#         self.spinning = True
-
 class Meteor(pygame.sprite.Sprite):
     spinning = False
 
@@ -133,11 +102,6 @@ class Meteor(pygame.sprite.Sprite):
 
         self.spin_axeleration = 0
 
-    @classmethod
-    def start_spin(self):
-        Meteor.spinning = True
-
-
     def update(self, dt):
         # Рух метеорита
         self.rect.center += self.direction * self.speed * dt
@@ -146,12 +110,19 @@ class Meteor(pygame.sprite.Sprite):
 
         # Обертання метеорита
         if Meteor.spinning:
-            print(f'rotation {self.rotation}')
             self.spin_axeleration = pygame.time.get_ticks()/10000
             self.rotation += 500 * dt
             self.speed += 300 * dt + self.spin_axeleration
             self.image = pygame.transform.rotozoom(self.original_surf, self.rotation, 1)
+            self.rect = self.image.get_frect(center = self.rect.center)
 
+    @classmethod
+    def start_spin(self):
+        Meteor.spinning = True
+
+    @classmethod
+    def stop_spin(self):
+        Meteor.spinning = False
 
 class Heart(pygame.sprite.Sprite):
     def __init__(self, surf, pos, ind, groups):
@@ -165,14 +136,32 @@ class Heart(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(pygame.image.load(join('images', 'gheart.png')).convert_alpha(), (30, 30))
         self.rect.y = 22
 
+class AnimatedExplosion(pygame.sprite.Sprite):
+    def __init__(self, frames, pos, groups):
+        super().__init__(groups)
+        self.frames = frames
+        self.frame_index = 0
+        self.image = self.frames[self.frame_index]
+        self.rect = self.image.get_frect(center = pos)
+
+    def update(self, dt):
+        self.frame_index += 40 * dt #Якщо ти збільшуєш self.frame_index на більше на більше значення за кожну ітерацію циклу (наприклад, на 40 * dt), індекс швидше досягне наступного цілого числа (інд наступного кадру).
+        if self.frame_index < len(self.frames):
+            self.image = self.frames[int(self.frame_index)]
+        else:
+            self.kill()
+
 
 def collisions(player, hearts):
-    good_collision = pygame.sprite.groupcollide(laser_srites, meteors_sprites, True, True)
-    if good_collision:
-        player.gain_score()
+    for laser in laser_srites:
+        good_collision = pygame.sprite.spritecollide(laser, meteors_sprites, True)
+        if good_collision:
+            player.gain_score()
+            laser.kill()
+            AnimatedExplosion(explosion_frames, laser.rect.midtop, all_sprites)
 
-    collision = pygame.sprite.spritecollide(player, meteors_sprites, True, pygame.sprite.collide_mask)
-    if collision:
+    loose_collision = pygame.sprite.spritecollide(player, meteors_sprites, True, pygame.sprite.collide_mask)
+    if loose_collision:
         player.loose_life()
         hearts.pop(player.lives).kills()
 
@@ -209,6 +198,7 @@ star_surf = pygame.image.load(join('images', 'star.png')).convert_alpha()
 surf = pygame.image.load(join('images', 'heart.png')).convert_alpha()
 heart_surf = pygame.transform.scale(surf, (50, 50))
 font = pygame.font.SysFont(join('images', 'Oxanium-Bold.ttf'), 45)
+explosion_frames = [pygame.image.load(join('images', 'explosion', f'{i}.png')).convert_alpha() for i in range (21)]
 
 
 #sprites groups
@@ -258,7 +248,7 @@ while running:
             Meteor((all_sprites, meteors_sprites), meteor_surf, (random.randint(10, WINDOW_WIDTH), random.randint(-200, 0)))
 
     if current_time > last_spin_time:
-        Meteor.spinning = False
+         Meteor.stop_spin()
 
     all_sprites.update(dt)
     display_surface.fill('#3a2e3f') #rosybrown1
